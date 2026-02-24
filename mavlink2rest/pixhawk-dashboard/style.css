@@ -1,0 +1,70 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: white;
+}
+
+.container {
+    display: flex;
+    padding: 20px;
+    gap: 40px;
+}
+
+.horizon-container {
+    width: 400px;
+    height: 300px;
+    overflow: hidden;
+    border-radius: 20px;
+    position: relative;
+    background: #000;
+}
+
+#horizon {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transition: transform 0.2s linear;
+}
+
+.sky {
+    height: 50%;
+    background: #69a9d6;
+}
+
+.ground {
+    height: 50%;
+    background: #6b8e23;
+}
+
+.status {
+    position: absolute;
+    top: 10px;
+    width: 100%;
+    text-align: center;
+    font-size: 28px;
+    font-weight: bold;
+    color: red;
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(2, 200px);
+    gap: 20px;
+}
+
+.card {
+    background: #222;
+    padding: 20px;
+    border-radius: 15px;
+    text-align: center;
+}
+
+.card h3 {
+    margin: 0 0 10px;
+}
+
+.card span {
+    font-size: 28px;
+    font-weight: bold;
+}

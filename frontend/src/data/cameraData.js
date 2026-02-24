@@ -1,0 +1,130 @@
+// src/data/cameraData.js
+
+// This file contains a list of common drone and mapping cameras with their sensor specifications.
+// imageWidth and imageHeight are in pixels.
+// sensorWidth and sensorHeight are in millimeters.
+// focalLength is in millimeters.
+
+export const cameraData = [
+  // Sony Mirrorless (Requested)
+  {
+    name: "Sony A6000 (APS-C) 16mm",
+    imageWidth: 6000,
+    imageHeight: 4000,
+    sensorWidth: 23.5,
+    sensorHeight: 15.6,
+    focalLength: 16,
+  },
+  {
+    name: "Sony A7R IV (Full Frame) 35mm",
+    imageWidth: 9504,
+    imageHeight: 6336,
+    sensorWidth: 35.7,
+    sensorHeight: 23.8,
+    focalLength: 35,
+  },
+  // {
+  //   name: "DJI Phantom 4 Pro",
+  //   imageWidth: 5472,
+  //   imageHeight: 3648,
+  //   sensorWidth: 13.2,
+  //   sensorHeight: 8.8,
+  //   focalLength: 8.8,
+  // },
+  // {
+  //   name: "DJI Mavic 2 Pro",
+  //   imageWidth: 5472,
+  //   imageHeight: 3648,
+  //   sensorWidth: 13.2,
+  //   sensorHeight: 8.8,
+  //   focalLength: 10.3,
+  // },
+  // {
+  //   name: "DJI Mavic 3 Enterprise",
+  //   imageWidth: 5280,
+  //   imageHeight: 3956,
+  //   sensorWidth: 12.8,
+  //   sensorHeight: 9.6,
+  //   focalLength: 24,
+  // },
+  // {
+  //   name: "DJI Zenmuse P1 (Full Frame) 35mm",
+  //   imageWidth: 8192,
+  //   imageHeight: 5460,
+  //   sensorWidth: 35.9,
+  //   sensorHeight: 24.0,
+  //   focalLength: 35,
+  // },
+  // {
+  //   name: "DJI Zenmuse X7 (Super 35) 24mm",
+  //   imageWidth: 6016,
+  //   imageHeight: 4008,
+  //   sensorWidth: 23.5,
+  //   sensorHeight: 15.7,
+  //   focalLength: 24,
+  // },
+  // {
+  //   name: "Parrot Anafi (1/2.4-inch)",
+  //   imageWidth: 5344,
+  //   imageHeight: 4016,
+  //   sensorWidth: 6.17,
+  //   sensorHeight: 4.55,
+  //   focalLength: 3.9,
+  // },
+  // {
+  //   name: "Canon EOS M50 (APS-C) 15mm",
+  //   imageWidth: 6000,
+  //   imageHeight: 4000,
+  //   sensorWidth: 22.3,
+  //   sensorHeight: 14.9,
+  //   focalLength: 15,
+  // },
+  // {
+  //   name: "Canon EOS 5D Mark IV (Full Frame) 35mm",
+  //   imageWidth: 6720,
+  //   imageHeight: 4480,
+  //   sensorWidth: 36.0,
+  //   sensorHeight: 24.0,
+  //   focalLength: 35,
+  // },
+  // {
+  //   name: "Fujifilm X-T30 (APS-C) 18mm",
+  //   imageWidth: 6240,
+  //   imageHeight: 4160,
+  //   sensorWidth: 23.5,
+  //   sensorHeight: 15.6,
+  //   focalLength: 18,
+  // },
+  // {
+  //   name: "MicaSense RedEdge-M",
+  //   imageWidth: 1280,
+  //   imageHeight: 960,
+  //   sensorWidth: 4.8,
+  //   sensorHeight: 3.6,
+  //   focalLength: 5.4,
+  // },
+  // {
+  //   name: "MicaSense RedEdge-P",
+  //   imageWidth: 1456,
+  //   imageHeight: 1088,
+  //   sensorWidth: 5.04,
+  //   sensorHeight: 3.78,
+  //   focalLength: 5.5,
+  // },
+  // {
+  //   name: "MicaSense Altum",
+  //   imageWidth: 2064,
+  //   imageHeight: 1544,
+  //   sensorWidth: 7.12,
+  //   sensorHeight: 5.33,
+  //   focalLength: 8.0,
+  // },
+  // {
+  //   name: "Phase One iXM-100 (Full Frame) 35mm",
+  //   imageWidth: 11608,
+  //   imageHeight: 8708,
+  //   sensorWidth: 53.4,
+  //   sensorHeight: 40.0,
+  //   focalLength: 35,
+  // },
+];

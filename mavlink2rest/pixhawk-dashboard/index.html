@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ThinkAerial Flight Panel</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Artificial Horizon -->
+    <div class="horizon-container">
+        <div id="horizon">
+            <div class="sky"></div>
+            <div class="ground"></div>
+        </div>
+        <div class="status" id="armStatus">DISARMED</div>
+    </div>
+
+    <!-- Telemetry Cards -->
+    <div class="cards">
+
+        <div class="card">
+            <h3>Altitude (m)</h3>
+            <span id="altitude">0.00</span>
+        </div>
+
+        <div class="card">
+            <h3>Ground Speed (m/s)</h3>
+            <span id="speed">0.00</span>
+        </div>
+
+        <div class="card">
+            <h3>Yaw (deg)</h3>
+            <span id="yaw">0.00</span>
+        </div>
+
+        <div class="card">
+            <h3>Vertical Speed (m/s)</h3>
+            <span id="climb">0.00</span>
+        </div>
+
+        <div class="card">
+            <h3>Battery</h3>
+            <span id="battery">N/A</span>
+        </div>
+
+    </div>
+
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
