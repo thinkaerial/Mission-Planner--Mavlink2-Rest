@@ -2,14 +2,29 @@
 import React from "react";
 
 const CheckboxRow = ({ label, checked, onChange }) => (
-  <label className="flex items-center gap-2 cursor-pointer py-1 hover:bg-gray-800/50 rounded">
-    <input
-      type="checkbox"
-      checked={checked}
-      onChange={(e) => onChange(e.target.checked)}
-      className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-500 rounded focus:ring-blue-500 focus:ring-2"
-    />
-    <span className="text-sm text-gray-300 select-none">{label}</span>
+  <label className="flex items-center gap-3 cursor-pointer py-1.5 hover:bg-gray-800/50 rounded px-2 transition-colors">
+    <div className="relative flex items-center justify-center">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="peer appearance-none w-4 h-4 border border-gray-500 rounded-sm bg-[#1e293b] checked:bg-blue-600 checked:border-blue-600 cursor-pointer transition-all"
+      />
+      <svg
+        className="absolute w-3 h-3 text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+      >
+        <path
+          fillRule="evenodd"
+          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+          clipRule="evenodd"
+        />
+      </svg>
+    </div>
+    <span className="text-sm font-medium text-gray-300 select-none">
+      {label}
+    </span>
   </label>
 );
 

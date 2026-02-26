@@ -122,11 +122,16 @@ export const TelemetryProvider = ({ children }) => {
           const customMode = hb.custom_mode;
           const modes = {
             0: "STABILIZE",
+            1: "ACRO",
+            2: "ALT_HOLD",
             3: "AUTO",
             4: "GUIDED",
             5: "LOITER",
             6: "RTL",
+            7: "CIRCLE",
             9: "LAND",
+            11: "DRIFT",
+            16: "POS_HOLD",
           };
           if (modes[customMode]) {
             newState.flightMode = modes[customMode];

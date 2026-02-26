@@ -1,4 +1,3 @@
-// src/components/mission/FlightPlannerSidebar.jsx
 import React, { useState, useRef } from "react";
 import MissionCommandsPanel from "./MissionCommandsPanel";
 import SurveyPatternPanel from "./SurveyPatternPanel";
@@ -50,25 +49,7 @@ const MissionSummary = ({ stats }) => (
     </div>
   </div>
 );
-const CalculatedParameters = ({ calcs }) => (
-  <div className="p-3 text-xs border-b border-gray-700">
-    <h3 className="font-semibold text-blue-400 mb-3">Calculated Parameters</h3>
-    <div className="grid grid-cols-2 gap-y-2">
-      <span className="text-gray-400">Line Spacing:</span>
-      <span className="text-green-400 font-mono text-right font-bold">
-        {(calcs.lineSpacing || 0).toFixed(1)} m
-      </span>
-      <span className="text-gray-400">Trigger Distance:</span>
-      <span className="text-green-400 font-mono text-right font-bold">
-        {(calcs.triggerDistance || 0).toFixed(1)} m
-      </span>
-      <span className="text-gray-400">Ground Sample Distance:</span>
-      <span className="text-gray-200 font-mono text-right">
-        {(calcs.gsd || 0).toFixed(2)} cm/px
-      </span>
-    </div>
-  </div>
-);
+
 const TabButton = ({ icon, label, isActive, onClick }) => (
   <button
     onClick={onClick}
@@ -288,6 +269,8 @@ const FlightPlannerSidebar = ({
                 setAltitudeUnit,
                 surveyOptions,
                 setSurveyOptions,
+                missionOptions,
+                setMissionOptions,
               }}
             />
 
@@ -337,27 +320,21 @@ const FlightPlannerSidebar = ({
                         surveyOptions,
                         setSurveyOptions,
                         missionItems,
-                        displaySettings, // PASS SETTINGS
-                        setDisplaySettings, // PASS SETTER
+                        displaySettings,
+                        setDisplaySettings,
                       }}
                     />
                   )}
 
+                  {/* THIS CONTAINS THE CALCULATED VALUES BOX */}
                   <MissionSettingsPanel
                     missionOptions={missionOptions}
                     setMissionOptions={setMissionOptions}
                     missionCalcs={missionCalcs}
                   />
-
-                  {/* <DisplayOptionsPanel
-                    displaySettings={displaySettings}
-                    setDisplaySettings={setDisplaySettings}
-                  /> */}
                 </div>
               )}
             </div>
-
-            {missionGenerated && <CalculatedParameters calcs={missionCalcs} />}
           </div>
         )}
         {activeTab === "commands" && (
@@ -365,6 +342,9 @@ const FlightPlannerSidebar = ({
             <ExportPanel
               onExport={onExportMission}
               disabled={missionItems.length === 0}
+              missionItems={missionItems}
+              homePosition={homePosition}
+              setMissionItems={setMissionItems}
             />
             <MissionCommandsPanel
               {...{

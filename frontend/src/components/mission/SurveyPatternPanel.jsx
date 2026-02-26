@@ -107,7 +107,7 @@ const SurveyPatternPanel = ({
         <button
           onClick={onGenerateMission}
           disabled={!boundaryPoints || boundaryPoints.length < 3}
-          className="w-full flex items-center justify-center gap-2 py-2 text-sm font-bold text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2 py-2 text-sm font-bold text-white bg-blue-600 border border-blue-500 shadow-[0_0_10px_rgba(37,99,235,0.3)] rounded-md hover:bg-blue-500 hover:shadow-[0_0_15px_rgba(37,99,235,0.5)] transition-all disabled:bg-gray-700 disabled:border-gray-600 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed"
         >
           {missionGenerated ? <FaRedo /> : <FaPlay />}
           {missionGenerated ? "Re-Generate Mission" : "Generate Mission"}

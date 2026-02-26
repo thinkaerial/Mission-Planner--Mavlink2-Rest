@@ -17,7 +17,7 @@ import L from "leaflet";
 import { renderToStaticMarkup } from "react-dom/server";
 import "leaflet-draw/dist/leaflet.draw.css";
 import * as turf from "@turf/turf";
-import { FaLocationArrow } from "react-icons/fa"; // Used for direction arrows
+import { FaLocationArrow } from "react-icons/fa";
 
 const hiddenDrawToolbarStyle = `
   .leaflet-draw-section {
@@ -25,9 +25,7 @@ const hiddenDrawToolbarStyle = `
   }
 `;
 
-const MAV_CMD = {
-  WAYPOINT: 16,
-};
+const MAV_CMD = { WAYPOINT: 16 };
 
 const ChangeView = ({ center, zoom, trigger }) => {
   const map = useMap();
@@ -38,8 +36,6 @@ const ChangeView = ({ center, zoom, trigger }) => {
   }, [center, zoom, trigger, map]);
   return null;
 };
-
-// --- Custom Icons ---
 
 const homeIcon = L.divIcon({
   html: renderToStaticMarkup(
@@ -52,15 +48,14 @@ const homeIcon = L.divIcon({
   iconAnchor: [16, 16],
 });
 
-// Standard Waypoint Icon (Green with Number)
 const createWaypointIcon = (number, type = "waypoint") => {
-  let bgColor = "bg-[#00FF00]"; // Bright Green like Mission Planner
+  let bgColor = "bg-[#00FF00]";
   let borderColor = "border-black";
   let textColor = "text-black";
 
   if (type === "start") bgColor = "bg-green-500";
   if (type === "end") bgColor = "bg-red-500";
-  // Boundary markers are distinct
+
   if (type === "boundary")
     return L.divIcon({
       html: renderToStaticMarkup(
@@ -85,12 +80,10 @@ const createWaypointIcon = (number, type = "waypoint") => {
   });
 };
 
-// Arrow Icon for Flight Path Direction
 const createArrowIcon = (rotation) => {
   return L.divIcon({
     html: renderToStaticMarkup(
       <div style={{ transform: `rotate(${rotation - 45}deg)` }}>
-        {/* -45 offset because FaLocationArrow points 45deg by default */}
         <FaLocationArrow className="text-yellow-400 text-lg drop-shadow-md stroke-black stroke-1" />
       </div>,
     ),
@@ -159,7 +152,6 @@ const MapPlanner = ({
     onPolygonEdited(e);
   };
 
-  // --- Flight Path & Arrow Calculations ---
   const { flightPathCoords, arrowMarkers } = React.useMemo(() => {
     if (!missionGenerated || !homePosition || missionItems.length === 0) {
       return { flightPathCoords: [], arrowMarkers: [] };
@@ -173,17 +165,13 @@ const MapPlanner = ({
       return { flightPathCoords: [], arrowMarkers: [] };
     }
 
-    // 1. Full Path Lines
     const coords = [
       [homePosition[0], homePosition[1]],
       ...surveyWaypoints.map((wp) => [wp.lat, wp.lon]),
       [homePosition[0], homePosition[1]],
     ];
 
-    // 2. Generate Arrows between waypoints
     const arrows = [];
-
-    // Only put arrows on the survey grid itself (skip home-to-start)
     for (let i = 0; i < surveyWaypoints.length - 1; i++) {
       const start = surveyWaypoints[i];
       const end = surveyWaypoints[i + 1];
@@ -206,7 +194,6 @@ const MapPlanner = ({
 
   const boundaryPathCoords = boundaryPoints.map((item) => [item.lat, item.lon]);
 
-  // --- Internals & Footprints Calculations ---
   const { internalPoints, footprints } = React.useMemo(() => {
     if (
       (!settings.showFootprints && !settings.showInternals) ||
@@ -249,14 +236,12 @@ const MapPlanner = ({
       const pointOnLine = turf.along(line, d, { units: "meters" });
       const center = pointOnLine.geometry.coordinates;
 
-      if (settings.showInternals) {
+      if (settings.showInternals)
         calculatedInternals.push([center[1], center[0]]);
-      }
 
       if (settings.showFootprints) {
         const pt = pointOnLine;
         const bearing = angle;
-
         const p1 = turf.destination(pt, diagonal, bearing + angleDeg, options)
           .geometry.coordinates;
         const p2 = turf.destination(
@@ -308,204 +293,180 @@ const MapPlanner = ({
   return (
     <>
       <style>{hiddenDrawToolbarStyle}</style>
-      <MapContainer
-        center={homePosition || [28.6129, 77.2295]}
-        zoom={18}
-        minZoom={2}
-        maxZoom={safeActiveLayer.options.maxZoom || 21}
-        scrollWheelZoom={true}
-        zoomControl={false}
-        className="absolute inset-0 z-10"
-        ref={mapRef}
-      >
-        <ChangeView center={homePosition} zoom={18} trigger={centerTrigger} />
+      <div className="h-full w-full relative">
+        <MapContainer
+          center={homePosition || [18.9863, 72.8183]}
+          zoom={18}
+          minZoom={2}
+          maxZoom={safeActiveLayer.options.maxZoom || 21}
+          scrollWheelZoom={true}
+          zoomControl={false}
+          className="absolute inset-0 z-10"
+          ref={mapRef}
+        >
+          <ChangeView center={homePosition} zoom={18} trigger={centerTrigger} />
 
-        <TileLayer
-          key={safeActiveLayer.name}
-          url={safeActiveLayer.url}
-          attribution={safeActiveLayer.attribution}
-          {...safeActiveLayer.options}
-        />
+          <TileLayer
+            key={safeActiveLayer.name}
+            url={safeActiveLayer.url}
+            attribution={safeActiveLayer.attribution}
+            {...safeActiveLayer.options}
+          />
 
-        {/* --- 1. Draw Control (Hidden) --- */}
-        <div className="leaflet-draw-toolbar-hidden">
-          <FeatureGroup ref={featureGroupRef}>
-            <EditControl
-              ref={(ref) => {
-                if (ref) onDrawControlReady && onDrawControlReady(ref);
-              }}
-              position="topleft"
-              onCreated={handleCreated}
-              onEdited={handleEdited}
-              draw={{
-                rectangle: false,
-                circle: false,
-                circlemarker: false,
-                marker: false,
-                polyline: false,
-                polygon: {
-                  allowIntersection: false,
-                  shapeOptions: {
-                    color: settings.showBoundary ? "#FF0055" : "transparent", // Red/Pink Boundary
-                    fillOpacity: settings.showBoundary ? 0.1 : 0,
-                    opacity: settings.showBoundary ? 1 : 0,
-                    weight: 2,
+          <div className="leaflet-draw-toolbar-hidden">
+            <FeatureGroup ref={featureGroupRef}>
+              <EditControl
+                ref={(ref) => {
+                  if (ref) onDrawControlReady && onDrawControlReady(ref);
+                }}
+                position="topleft"
+                onCreated={handleCreated}
+                onEdited={handleEdited}
+                draw={{
+                  rectangle: false,
+                  circle: false,
+                  circlemarker: false,
+                  marker: false,
+                  polyline: false,
+                  polygon: {
+                    allowIntersection: false,
+                    shapeOptions: {
+                      color: settings.showBoundary ? "#FF0055" : "transparent",
+                      fillOpacity: settings.showBoundary ? 0.1 : 0,
+                      opacity: settings.showBoundary ? 1 : 0,
+                      weight: 2,
+                    },
                   },
-                },
-              }}
-              edit={{ featureGroup: featureGroupRef.current, remove: false }}
-            />
-          </FeatureGroup>
-        </div>
+                }}
+                edit={{ featureGroup: featureGroupRef.current, remove: false }}
+              />
+            </FeatureGroup>
+          </div>
 
-        {/* --- 2. Home Marker --- */}
-        {homePosition && (
-          <Marker
-            position={homePosition}
-            icon={homeIcon}
-            zIndexOffset={1000}
-            draggable={true}
-            eventHandlers={homeMarkerHandlers}
-          >
-            <Popup>
-              <b>Home Location</b> <br /> Lat: {homePosition[0].toFixed(7)}{" "}
-              <br />
-              Lon: {homePosition[1].toFixed(7)}
-            </Popup>
-          </Marker>
-        )}
-
-        {/* --- 3. Boundary Polygon & Vertices --- */}
-        {settings.showBoundary && boundaryPathCoords.length > 1 && (
-          <>
-            <Polygon
-              positions={boundaryPathCoords}
-              color="#FF0055" // Pink/Red Boundary like Mission Planner
-              weight={2}
-              fillOpacity={0.1}
-            />
-            {/* Markers at Boundary Corners to see Lat/Lon */}
-            {boundaryPathCoords.map((pos, idx) => (
-              <Marker
-                key={`bnd-${idx}`}
-                position={pos}
-                icon={createWaypointIcon(idx, "boundary")}
-              >
-                <Popup>
-                  <b>Boundary Point {idx + 1}</b>
-                  <br />
-                  Lat: {pos[0].toFixed(7)}
-                  <br />
-                  Lon: {pos[1].toFixed(7)}
-                </Popup>
-              </Marker>
-            ))}
-          </>
-        )}
-
-        {/* --- 4. Flight Path (Yellow Grid) --- */}
-        {settings.showGrid && flightPathCoords.length > 1 && (
-          <Polyline
-            positions={flightPathCoords}
-            color="#FFFF00" // Bright Yellow
-            weight={3}
-          >
-            <Tooltip sticky>Flight Path</Tooltip>
-          </Polyline>
-        )}
-
-        {/* --- 5. Direction Arrows on Grid --- */}
-        {settings.showGrid &&
-          arrowMarkers.map((arrow, idx) => (
+          {homePosition && (
             <Marker
-              key={`arrow-${idx}`}
-              position={[arrow.lat, arrow.lon]}
-              icon={createArrowIcon(arrow.bearing)}
-              interactive={false} // Click through to line
-            />
-          ))}
+              position={homePosition}
+              icon={homeIcon}
+              zIndexOffset={1000}
+              draggable={true}
+              eventHandlers={homeMarkerHandlers}
+            >
+              <Popup>
+                <b>Home Location</b> <br /> Lat: {homePosition[0].toFixed(7)}{" "}
+                <br /> Lon: {homePosition[1].toFixed(7)}
+              </Popup>
+            </Marker>
+          )}
 
-        {/* --- 6. Footprints (Green) --- */}
-        {settings.showFootprints &&
-          footprints.map((coords, i) => (
-            <Polygon
-              key={`fp-${i}`}
-              positions={coords}
-              color="#00FF00" // Green
-              weight={1}
-              fillOpacity={0.0} // Transparent fill, just outline
-            />
-          ))}
-
-        {/* --- 7. Internals (Camera Triggers - Small Dots) --- */}
-        {settings.showInternals &&
-          internalPoints.map((pos, i) => (
-            <CircleMarker
-              key={`int-${i}`}
-              center={pos}
-              radius={2}
-              color="#FFFF00"
-              fillColor="#000000"
-              fillOpacity={1}
-              weight={1}
-            />
-          ))}
-
-        {/* --- 8. Waypoint Markers & Threshold Circles --- */}
-        {settings.showMarkers &&
-          missionItems.map((item, index) => {
-            if (item.command !== MAV_CMD.WAYPOINT) return null;
-
-            const totalWaypoints = missionItems.filter(
-              (i) => i.command === MAV_CMD.WAYPOINT,
-            ).length;
-
-            // Standard green waypoints, first/last logic handled in icon creator
-            let iconType = "waypoint";
-            if (index === 0 && missionGenerated) iconType = "start";
-            else if (index === totalWaypoints - 1 && missionGenerated)
-              iconType = "end";
-
-            const waypointNumber = missionGenerated
-              ? missionItems
-                  .filter((i) => i.command === MAV_CMD.WAYPOINT)
-                  .findIndex((wp) => wp.id === item.id) + 1
-              : index + 1;
-
-            return (
-              <React.Fragment key={item.id}>
-                {/* Yellow Radius Threshold */}
-                <Circle
-                  center={[item.lat, item.lon]}
-                  radius={waypointRadius}
-                  pathOptions={{
-                    color: "#FFFF00",
-                    weight: 1,
-                    fillOpacity: 0.1,
-                    dashArray: "4, 4",
-                  }}
-                />
-
+          {settings.showBoundary && boundaryPathCoords.length > 1 && (
+            <>
+              <Polygon
+                positions={boundaryPathCoords}
+                color="#FF0055"
+                weight={2}
+                fillOpacity={0.1}
+              />
+              {boundaryPathCoords.map((pos, idx) => (
                 <Marker
-                  position={[item.lat, item.lon]}
-                  icon={createWaypointIcon(waypointNumber, iconType)}
+                  key={`bnd-${idx}`}
+                  position={pos}
+                  icon={createWaypointIcon(idx, "boundary")}
                 >
-                  <Tooltip direction="top" offset={[0, -10]}>
-                    {`WP ${waypointNumber}`}
-                  </Tooltip>
                   <Popup>
-                    <div className="text-center">
-                      <b>Waypoint {waypointNumber}</b>
-                      <br />
-                      Alt: {item.alt}m <br />
-                      Radius: {waypointRadius}m
-                    </div>
+                    <b>Boundary Point {idx + 1}</b>
+                    <br />
+                    Lat: {pos[0].toFixed(7)}
+                    <br />
+                    Lon: {pos[1].toFixed(7)}
                   </Popup>
                 </Marker>
-              </React.Fragment>
-            );
-          })}
-      </MapContainer>
+              ))}
+            </>
+          )}
+
+          {settings.showGrid && flightPathCoords.length > 1 && (
+            <Polyline positions={flightPathCoords} color="#FFFF00" weight={3}>
+              <Tooltip sticky>Flight Path</Tooltip>
+            </Polyline>
+          )}
+
+          {settings.showGrid &&
+            arrowMarkers.map((arrow, idx) => (
+              <Marker
+                key={`arrow-${idx}`}
+                position={[arrow.lat, arrow.lon]}
+                icon={createArrowIcon(arrow.bearing)}
+                interactive={false}
+              />
+            ))}
+
+          {settings.showFootprints &&
+            footprints.map((coords, i) => (
+              <Polygon
+                key={`fp-${i}`}
+                positions={coords}
+                color="#00FF00"
+                weight={1}
+                fillOpacity={0.0}
+              />
+            ))}
+
+          {settings.showInternals &&
+            internalPoints.map((pos, i) => (
+              <CircleMarker
+                key={`int-${i}`}
+                center={pos}
+                radius={3}
+                color="#FFFF00"
+                fillColor="#000000"
+                fillOpacity={1}
+                weight={1.5}
+              />
+            ))}
+
+          {/* --- ONLY SHOW WAYPOINT MARKERS (HIDES NULL ISLAND TAKEOFF) --- */}
+          {settings.showMarkers &&
+            missionItems.map((item, index) => {
+              if (item.command !== MAV_CMD.WAYPOINT) return null;
+
+              const displayId = index + 1;
+
+              return (
+                <React.Fragment key={item.id}>
+                  <Circle
+                    center={[item.lat, item.lon]}
+                    radius={waypointRadius}
+                    pathOptions={{
+                      color: "#FFFF00",
+                      weight: 1,
+                      fillOpacity: 0.1,
+                      dashArray: "4, 4",
+                    }}
+                  />
+                  <Marker
+                    position={[item.lat, item.lon]}
+                    icon={createWaypointIcon(displayId, "waypoint")}
+                  >
+                    <Tooltip
+                      direction="top"
+                      offset={[0, -10]}
+                    >{`Index ${displayId}`}</Tooltip>
+                    <Popup>
+                      <div className="text-center">
+                        <b className="text-blue-600">
+                          Command Index {displayId}
+                        </b>
+                        <br />
+                        Alt: {item.alt}m <br />
+                        Radius: {waypointRadius}m
+                      </div>
+                    </Popup>
+                  </Marker>
+                </React.Fragment>
+              );
+            })}
+        </MapContainer>
+      </div>
     </>
   );
 };

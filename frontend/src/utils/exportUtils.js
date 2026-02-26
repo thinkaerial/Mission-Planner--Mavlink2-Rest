@@ -2,34 +2,25 @@
 
 // Function to format for ArduPilot's .waypoints file
 export const toArduPilotFormat = (missionItems, homePosition) => {
-  const header = "QGC WPL 110\n";
-  const home = `0\t1\t0\t16\t0\t0\t0\t0\t${homePosition[0].toFixed(
-    7,
-  )}\t${homePosition[1].toFixed(7)}\t0.000000\t1\n`;
+  let output = "QGC WPL 110\n";
 
-  const waypoints = missionItems
-    .map((item, index) => {
-      const command = item.command;
-      const lat = item.lat.toFixed(7);
-      const lon = item.lon.toFixed(7);
-      const alt = item.alt.toFixed(6);
+  // Index 0: Home Position (ArduPilot requirement)
+  output += `0\t1\t0\t16\t0\t0\t0\t0\t${homePosition[0].toFixed(8)}\t${homePosition[1].toFixed(8)}\t0.000000\t1\n`;
 
-      // Safely grab parameters, default to 0.0
-      const p1 =
-        item.param1 !== undefined ? item.param1.toFixed(6) : "0.000000";
-      const p2 =
-        item.param2 !== undefined ? item.param2.toFixed(6) : "0.000000";
-      const p3 =
-        item.param3 !== undefined ? item.param3.toFixed(6) : "0.000000";
-      const p4 =
-        item.param4 !== undefined ? item.param4.toFixed(6) : "0.000000";
+  missionItems.forEach((item, index) => {
+    const lat = item.lat.toFixed(8);
+    const lon = item.lon.toFixed(8);
+    const alt = item.alt.toFixed(6);
+    const p1 = (item.param1 || 0).toFixed(8);
+    const p2 = (item.param2 || 0).toFixed(8);
+    const p3 = (item.param3 || 0).toFixed(8);
+    const p4 = (item.param4 || 0).toFixed(8);
 
-      // Structure: INDEX CURRENT COORD_FRAME COMMAND P1 P2 P3 P4 X/LAT Y/LON Z/ALT AUTOCONTINUE
-      return `${index + 1}\t0\t3\t${command}\t${p1}\t${p2}\t${p3}\t${p4}\t${lat}\t${lon}\t${alt}\t1`;
-    })
-    .join("\n");
+    // INDEX | CURRENT | FRAME | COMMAND | P1 | P2 | P3 | P4 | LAT | LON | ALT | AUTO
+    output += `${index + 1}\t0\t3\t${item.command}\t${p1}\t${p2}\t${p3}\t${p4}\t${lat}\t${lon}\t${alt}\t1\n`;
+  });
 
-  return header + home + waypoints;
+  return output;
 };
 
 export const toKMLFormat = (missionItems, missionName) => {
