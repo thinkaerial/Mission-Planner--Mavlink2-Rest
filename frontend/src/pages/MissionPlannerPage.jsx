@@ -26,10 +26,12 @@ import {
   createNewMission,
   deleteMission,
 } from "../api/missionApi";
+import { armDrone, setAutoMode } from "../api/droneApi"; // Added for flight control
 import { toArduPilotFormat, toKMLFormat } from "../utils/exportUtils";
 import { useAuth } from "../context/AuthContext";
 import ActionModal from "../components/common/ActionModal";
 import { mapLayers } from "../data/mapLayers";
+import { FaPlay, FaLock, FaUndo, FaListUl } from "react-icons/fa"; // Added for UI buttons
 
 const MAV_CMD = {
   WAYPOINT: 16,
@@ -40,6 +42,12 @@ const MAV_CMD = {
 };
 
 const MainContent = () => {
+  // --- NEW WORKFLOW STATES ---
+  const [workflowStep, setWorkflowStep] = useState("PLAN"); // PLAN, CHECKLIST, UPLOADED, FLYING
+  const [isLocked, setIsLocked] = useState(false);
+  const [logs, setLogs] = useState([]);
+
+  // --- ORIGINAL STATES ---
   const [homePosition, setHomePosition] = useState(() => {
     const savedHome = localStorage.getItem("homePosition");
     return savedHome ? JSON.parse(savedHome) : [18.986392, 72.818327];
@@ -103,6 +111,43 @@ const MainContent = () => {
     splitSegments: 1,
   });
 
+  // --- LOGGING HELPER ---
+  const addLog = (msg) => {
+    setLogs((prev) =>
+      [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 50),
+    );
+  };
+
+  // --- WORKFLOW HANDLERS ---
+  const startPreflight = () => {
+    if (!missionGenerated) {
+      toast.error("Please generate a mission first!");
+      return;
+    }
+    setWorkflowStep("CHECKLIST");
+    setIsLocked(true);
+    addLog("Pre-flight checklist initiated. UI Locked.");
+  };
+
+  const handleUploadSuccess = () => {
+    setWorkflowStep("UPLOADED");
+    addLog("Mission Uploaded Successfully. Drone ready for departure.");
+    toast.success("Ready to Fly!");
+  };
+
+  const handleStartFlight = async () => {
+    addLog("Initiating Takeoff sequence...");
+    const armed = await armDrone();
+    if (armed) {
+      addLog("Drone ARMED.");
+      const auto = await setAutoMode();
+      if (auto) {
+        setWorkflowStep("FLYING");
+        addLog("Mission Started: AUTO Mode active.");
+      }
+    }
+  };
+
   useEffect(() => {
     if (user) {
       getMissions().then((missions) => {
@@ -157,7 +202,6 @@ const MainContent = () => {
       const newMissionItems = [];
       let id = 1;
 
-      // Command Sequence: EXACT Mission Planner logic
       newMissionItems.push({
         id: id++,
         command: MAV_CMD.TAKEOFF,
@@ -248,8 +292,7 @@ const MainContent = () => {
   );
 
   useEffect(() => {
-    // Auto-Regenerate on settings change
-    if (missionGenerated && !showGenerationModal) {
+    if (missionGenerated && !showGenerationModal && !isLocked) {
       const handler = setTimeout(() => regenerateMission(null), 300);
       return () => clearTimeout(handler);
     }
@@ -262,6 +305,7 @@ const MainContent = () => {
     missionOptions.selectedCamera,
     missionOptions.startingWaypoint,
     regenerateMission,
+    isLocked,
   ]);
 
   const missionCalcs = useMemo(() => {
@@ -477,6 +521,8 @@ const MainContent = () => {
     setMissionItems([]);
     setBoundaryPoints([]);
     setMissionGenerated(false);
+    setWorkflowStep("PLAN");
+    setIsLocked(false);
     setClearTrigger((prev) => prev + 1);
   };
 
@@ -541,7 +587,8 @@ const MainContent = () => {
         defaultAltitude={defaultAltitude}
       />
 
-      <div className="h-full w-full flex overflow-hidden">
+      <div className="h-full w-full flex overflow-hidden relative">
+        {/* SIDEBAR */}
         <div
           className="flex-shrink-0 h-full relative"
           style={{ width: isSidebarCollapsed ? "80px" : `${sidebarWidth}px` }}
@@ -587,10 +634,56 @@ const MainContent = () => {
             setAutoSettings={setAutoSettings}
             displaySettings={displaySettings}
             setDisplaySettings={setDisplaySettings}
+            // NEW WORKFLOW PROPS
+            workflowStep={workflowStep}
+            setWorkflowStep={setWorkflowStep}
+            isLocked={isLocked}
+            setIsLocked={setIsLocked}
+            onUploadSuccess={handleUploadSuccess}
+            addLog={addLog}
           />
         </div>
 
-        <div className="flex-grow h-full w-full relative">
+        {/* MAP & TOOLS */}
+        <div
+          className={`flex-grow h-full w-full relative ${isLocked ? "cursor-not-allowed" : ""}`}
+        >
+          {/* FLOATING ACTION BUTTONS (Right Corner) */}
+          <div className="absolute bottom-10 right-6 z-[1000] flex flex-col gap-4 items-center">
+            <button className="p-4 bg-white text-gray-800 rounded-full shadow-xl border border-gray-200 hover:bg-gray-100 transition-colors">
+              <FaLock />
+            </button>
+            <button className="p-4 bg-white text-gray-400 rounded-full shadow-xl border border-gray-200 cursor-not-allowed">
+              <FaUndo />
+            </button>
+            {/* BLUE CHECKLIST BUTTON */}
+            {workflowStep === "PLAN" && missionGenerated && (
+              <div className="group relative flex items-center">
+                <span className="absolute right-16 bg-black/80 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                  Start preflight checklist
+                </span>
+                <button
+                  onClick={startPreflight}
+                  className="p-5 bg-blue-600 text-white rounded-full shadow-2xl hover:bg-blue-700 transition-all transform hover:scale-110"
+                >
+                  <FaListUl className="text-2xl" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* START FLIGHT BLINKING BUTTON */}
+          {workflowStep === "UPLOADED" && (
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[2000]">
+              <button
+                onClick={handleStartFlight}
+                className="bg-green-600 text-white px-12 py-5 rounded-full font-bold text-2xl shadow-2xl animate-blink border-4 border-white flex items-center gap-3 uppercase tracking-widest"
+              >
+                <FaPlay /> Start Flight
+              </button>
+            </div>
+          )}
+
           <MapPlanner
             homePosition={homePosition}
             missionItems={missionItems}
@@ -612,7 +705,9 @@ const MainContent = () => {
             missionCalcs={missionCalcs}
             surveyOptions={surveyOptions}
             missionOptions={missionOptions}
+            isLocked={isLocked}
           />
+
           <MissionTools
             onClear={handleClearArea}
             onCenter={() => setCenterTrigger((prev) => prev + 1)}
@@ -628,6 +723,15 @@ const MainContent = () => {
               document.querySelector(".leaflet-draw-edit-edit")?.click()
             }
           />
+
+          {/* CONSOLE LOG OVERLAY (Bottom Left) */}
+          <div className="absolute bottom-5 left-5 z-[1000] w-80 h-40 bg-black/80 text-green-400 font-mono text-[10px] p-2 rounded border border-gray-700 overflow-y-auto pointer-events-none shadow-2xl">
+            {logs.map((log, i) => (
+              <div key={i} className="mb-1 leading-tight">
+                {log}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </AppLayout>

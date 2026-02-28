@@ -21,3 +21,46 @@ body {
   -moz-osx-font-smoothing: grayscale;
   /* overflow: hidden; */
 }
+
+/* index.css */
+@keyframes blinkGreen {
+  0% { background-color: #16a34a; box-shadow: 0 0 0px #16a34a; }
+  50% { background-color: #22c55e; box-shadow: 0 0 20px #22c55e; }
+  100% { background-color: #16a34a; box-shadow: 0 0 0px #16a34a; }
+}
+
+.animate-blink-ready {
+  animation: blinkGreen 1.5s infinite;
+}
+
+.ui-locked-overlay {
+  pointer-events: none;
+  filter: grayscale(0.6) blur(1px);
+  opacity: 0.8;
+  transition: all 0.5s ease;
+}
+
+.checklist-item-appear {
+  animation: slideIn 0.4s ease-out forwards;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes blink-ready {
+  0% { transform: translate(-50%, -50%) scale(1); background-color: #16a34a; box-shadow: 0 0 0px #22c55e; }
+  50% { transform: translate(-50%, -50%) scale(1.05); background-color: #22c55e; box-shadow: 0 0 30px #22c55e; }
+  100% { transform: translate(-50%, -50%) scale(1); background-color: #16a34a; box-shadow: 0 0 0px #22c55e; }
+}
+
+.animate-blink {
+  animation: blink-ready 1.2s infinite ease-in-out;
+}
+
+/* Gray out the UI when locked */
+.cursor-not-allowed .leaflet-container {
+  filter: brightness(0.4) grayscale(0.5);
+  pointer-events: none;
+}

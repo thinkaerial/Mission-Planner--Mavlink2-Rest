@@ -2,107 +2,57 @@
 import axios from "axios";
 import { toast } from "react-toastify";
 
-// Point directly to mavlink2rest URL (default is localhost:8088)
+// Point directly to mavlink2rest URL
 const mavlinkApi = axios.create({
   baseURL: "http://localhost:8088",
 });
 
-// Helper function to format the JSON payload exactly how mavlink2rest expects it
-// We use COMMAND_LONG (MAVLink Command #76) for most actions
 const sendCommand = async (
   commandName,
-  param1 = 0,
-  param2 = 0,
-  param3 = 0,
-  param4 = 0,
-  param5 = 0,
-  param6 = 0,
-  param7 = 0,
+  p1 = 0,
+  p2 = 0,
+  p3 = 0,
+  p4 = 0,
+  p5 = 0,
+  p6 = 0,
+  p7 = 0,
 ) => {
   const payload = {
-    header: {
-      system_id: 255, // GCS System ID
-      component_id: 0,
-      sequence: 0,
-    },
+    header: { system_id: 255, component_id: 0, sequence: 0 },
     message: {
       type: "COMMAND_LONG",
-      target_system: 1, // Drone System ID (usually 1)
-      target_component: 1, // Drone Component ID (usually 1 for autopilot)
-      command: {
-        type: commandName, // e.g. "MAV_CMD_NAV_TAKEOFF"
-      },
+      target_system: 1,
+      target_component: 1,
+      command: { type: commandName },
       confirmation: 0,
-      param1: param1,
-      param2: param2,
-      param3: param3,
-      param4: param4,
-      param5: param5,
-      param6: param6,
-      param7: param7,
+      param1: p1,
+      param2: p2,
+      param3: p3,
+      param4: p4,
+      param5: p5,
+      param6: p6,
+      param7: p7,
     },
   };
 
   try {
-    // mavlink2rest endpoint for sending messages
     await mavlinkApi.post("/mavlink", payload);
     return true;
   } catch (error) {
     console.error(`Error sending ${commandName}:`, error);
-    toast.error(`Command failed: ${commandName}`);
     return false;
   }
 };
 
-export const armDrone = () => {
-  // MAV_CMD_COMPONENT_ARM_DISARM (400): param1=1 (Arm)
-  return sendCommand("MAV_CMD_COMPONENT_ARM_DISARM", 1);
-};
+export const armDrone = () => sendCommand("MAV_CMD_COMPONENT_ARM_DISARM", 1);
+export const disarmDrone = () => sendCommand("MAV_CMD_COMPONENT_ARM_DISARM", 0);
+export const setAutoMode = () => sendCommand("MAV_CMD_DO_SET_MODE", 1, 3);
+export const takeoffDrone = (alt = 10) =>
+  sendCommand("MAV_CMD_NAV_TAKEOFF", 0, 0, 0, 0, 0, 0, alt);
+export const landDrone = () => sendCommand("MAV_CMD_NAV_LAND");
+export const rtlDrone = () => sendCommand("MAV_CMD_NAV_RETURN_TO_LAUNCH");
 
-export const disarmDrone = () => {
-  // MAV_CMD_COMPONENT_ARM_DISARM (400): param1=0 (Disarm)
-  return sendCommand("MAV_CMD_COMPONENT_ARM_DISARM", 0);
-};
-
-export const takeoffDrone = (altitudeMeters = 10) => {
-  // MAV_CMD_NAV_TAKEOFF (22): param7 is altitude
-  return sendCommand("MAV_CMD_NAV_TAKEOFF", 0, 0, 0, 0, 0, 0, altitudeMeters);
-};
-
-export const landDrone = () => {
-  // MAV_CMD_NAV_LAND (21)
-  return sendCommand("MAV_CMD_NAV_LAND");
-};
-
-export const rtlDrone = () => {
-  // MAV_CMD_NAV_RETURN_TO_LAUNCH (20)
-  return sendCommand("MAV_CMD_NAV_RETURN_TO_LAUNCH");
-};
-
-export const setFlightMode = async (modeName) => {
-  // Setting flight modes in MAVLink is complex (requires MAV_CMD_DO_SET_MODE).
-  // For standard ArduPilot/PX4, it's often easier to use mavlink2rest helper or
-  // strictly map Custom Modes. This is a placeholder for advanced implementation.
-  // For now, rely on Arm/Takeoff/RTL.
-  console.log(
-    "Mode switching implementation required specific to Autopilot type",
-  );
-};
-
-// 1. SET AUTO MODE (Starts the mission if armed)
-export const setAutoMode = async () => {
-  try {
-    // MAV_CMD_DO_SET_MODE (176). Param1 = 1 (Custom Mode Enabled), Param2 = 3 (ArduCopter AUTO Mode)
-    await sendCommand("MAV_CMD_DO_SET_MODE", 1, 3, 0, 0, 0, 0, 0);
-    toast.success("Flight Mode set to AUTO. Mission will begin if armed.");
-    return true;
-  } catch (e) {
-    toast.error("Failed to set AUTO mode.");
-    return false;
-  }
-};
-
-// 2. CLEAR MISSION ON DRONE
+// CLEAR MISSION
 export const clearDroneMission = async () => {
   try {
     await mavlinkApi.post("/mavlink", {
@@ -114,77 +64,91 @@ export const clearDroneMission = async () => {
         mission_type: { type: "MAV_MISSION_TYPE_MISSION" },
       },
     });
-    toast.success("Mission cleared from Pixhawk.");
     return true;
   } catch (e) {
-    toast.error("Failed to clear mission.");
     return false;
   }
 };
 
-// 3. DOWNLOAD MISSION FROM DRONE
-export const downloadMissionFromDrone = async () => {
+// DOWNLOAD MISSION FROM DRONE
+export const downloadMissionFromDrone = async (onProgress) => {
   try {
-    toast.info("Requesting mission list from drone...");
+    // STEP 1: Request Mission Count
+    if (onProgress)
+      onProgress(0, 100, "Requesting mission count from drone...");
 
-    // 1. Request the total count of waypoints
-    await mavlinkApi.post("/mavlink", {
-      header: { system_id: 255, component_id: 0, sequence: 0 },
-      message: {
-        type: "MISSION_REQUEST_LIST",
-        target_system: 1,
-        target_component: 1,
-        mission_type: { type: "MAV_MISSION_TYPE_MISSION" },
-      },
-    });
+    let missionCount = -1;
+    let requestListTime = 0;
 
-    // Wait for the drone to reply with MISSION_COUNT
-    let missionCount = 0;
-    let retries = 0;
-    while (retries < 20) {
+    for (let i = 0; i < 40; i++) {
+      if (Date.now() - requestListTime > 1000) {
+        await mavlinkApi.post("/mavlink", {
+          header: { system_id: 255, component_id: 0, sequence: 0 },
+          message: {
+            type: "MISSION_REQUEST_LIST",
+            target_system: 1,
+            target_component: 1,
+            mission_type: { type: "MAV_MISSION_TYPE_MISSION" },
+          },
+        });
+        requestListTime = Date.now();
+      }
+
       await new Promise((r) => setTimeout(r, 100));
       const res = await mavlinkApi
-        .get("/v1/mavlink/vehicles/1/components/1/messages/MISSION_COUNT")
+        .get(
+          `/v1/mavlink/vehicles/1/components/1/messages/MISSION_COUNT?t=${Date.now()}`,
+        )
         .catch(() => null);
-      if (res && res.data && res.data.message) {
+
+      if (res?.data?.message) {
         missionCount = res.data.message.count;
         break;
       }
-      retries++;
     }
 
-    if (missionCount === 0) {
-      toast.warning("Drone has no mission saved (Count is 0).");
+    if (missionCount <= 0) {
       return [];
     }
 
-    toast.info(`Downloading ${missionCount} waypoints...`);
     const downloadedItems = [];
 
-    // 2. Request each waypoint one by one
+    // STEP 2: Download Waypoints 1 by 1
     for (let i = 0; i < missionCount; i++) {
-      // Ask for waypoint 'i'
-      await mavlinkApi.post("/mavlink", {
-        header: { system_id: 255, component_id: 0, sequence: 0 },
-        message: {
-          type: "MISSION_REQUEST_INT",
-          target_system: 1,
-          target_component: 1,
-          seq: i,
-          mission_type: { type: "MAV_MISSION_TYPE_MISSION" },
-        },
-      });
+      if (onProgress)
+        onProgress(
+          i,
+          missionCount,
+          `Downloading Waypoint ${i + 1} of ${missionCount}...`,
+        );
 
-      // Poll until we get the correct waypoint
-      let wpRetries = 0;
       let gotWaypoint = false;
-      while (wpRetries < 20 && !gotWaypoint) {
+      let requestTime = 0;
+
+      for (let retries = 0; retries < 40 && !gotWaypoint; retries++) {
+        // Send request (with retry if packet drops)
+        if (Date.now() - requestTime > 1000) {
+          await mavlinkApi.post("/mavlink", {
+            header: { system_id: 255, component_id: 0, sequence: 0 },
+            message: {
+              type: "MISSION_REQUEST_INT",
+              target_system: 1,
+              target_component: 1,
+              seq: i,
+              mission_type: { type: "MAV_MISSION_TYPE_MISSION" },
+            },
+          });
+          requestTime = Date.now();
+        }
+
         await new Promise((r) => setTimeout(r, 100));
         const res = await mavlinkApi
-          .get("/v1/mavlink/vehicles/1/components/1/messages/MISSION_ITEM_INT")
+          .get(
+            `/v1/mavlink/vehicles/1/components/1/messages/MISSION_ITEM_INT?t=${Date.now()}`,
+          )
           .catch(() => null);
 
-        if (res && res.data && res.data.message && res.data.message.seq === i) {
+        if (res?.data?.message?.seq === i) {
           const wp = res.data.message;
           downloadedItems.push({
             id: wp.seq,
@@ -210,11 +174,11 @@ export const downloadMissionFromDrone = async () => {
           });
           gotWaypoint = true;
         }
-        wpRetries++;
       }
+      if (!gotWaypoint) throw new Error("Timeout getting waypoint " + i);
     }
 
-    // 3. Send ACK to tell drone we are done
+    // STEP 3: Acknowledge Download Complete
     await mavlinkApi.post("/mavlink", {
       header: { system_id: 255, component_id: 0, sequence: 0 },
       message: {
@@ -226,20 +190,23 @@ export const downloadMissionFromDrone = async () => {
       },
     });
 
-    toast.success("Mission downloaded successfully!");
+    if (onProgress)
+      onProgress(missionCount, missionCount, "Download Complete!");
     return downloadedItems;
   } catch (err) {
-    console.error("Download failed:", err);
-    toast.error("Failed to download mission from drone.");
-    return [];
+    console.error(err);
+    throw new Error("Failed to download mission.");
   }
 };
 
-export const uploadMissionToDrone = async (missionItems, homePosition) => {
+// UPLOAD MISSION TO DRONE
+export const uploadMissionToDrone = async (
+  missionItems,
+  homePosition,
+  onProgress,
+) => {
   try {
-    const totalItems = missionItems.length + 1; // +1 for the Home Waypoint (Index 0)
-
-    // Map numerical commands to MAVLink string names for mavlink2rest
+    const totalItems = missionItems.length + 1; // +1 for the Home waypoint at index 0
     const COMMAND_MAP = {
       16: "MAV_CMD_NAV_WAYPOINT",
       20: "MAV_CMD_NAV_RETURN_TO_LAUNCH",
@@ -248,24 +215,15 @@ export const uploadMissionToDrone = async (missionItems, homePosition) => {
       206: "MAV_CMD_DO_SET_CAM_TRIGG_DIST",
     };
 
-    toast.info("Clearing old mission from Pixhawk...");
+    // STEP 1: Clear Old Mission
+    if (onProgress)
+      onProgress(0, totalItems, "Clearing old mission from drone...");
+    await clearDroneMission();
+    await new Promise((r) => setTimeout(r, 1000)); // Crucial delay to let Pixhawk memory clear
 
-    // 1. Clear existing mission
-    await mavlinkApi.post("/mavlink", {
-      header: { system_id: 255, component_id: 0, sequence: 0 },
-      message: {
-        type: "MISSION_CLEAR_ALL",
-        target_system: 1,
-        target_component: 1,
-        mission_type: { type: "MAV_MISSION_TYPE_MISSION" },
-      },
-    });
-
-    await new Promise((r) => setTimeout(r, 500)); // Wait half a second
-
-    toast.info("Initiating upload...");
-
-    // 2. Tell the drone how many items we are sending
+    // STEP 2: Send Count
+    if (onProgress)
+      onProgress(0, totalItems, "Preparing to upload new mission...");
     await mavlinkApi.post("/mavlink", {
       header: { system_id: 255, component_id: 0, sequence: 0 },
       message: {
@@ -277,99 +235,94 @@ export const uploadMissionToDrone = async (missionItems, homePosition) => {
       },
     });
 
-    // 3. Listen for requests from the drone and answer them
-    let lastReqSeqId = -1;
-    let retries = 0;
-    let isComplete = false;
+    let lastHandledSeq = -1;
+    let lastHandledTime = Date.now();
+    let sequenceRetries = 0;
 
-    // Poll rapidly (every 100ms) to answer drone requests
-    while (retries < 150 && !isComplete) {
-      await new Promise((r) => setTimeout(r, 100));
+    // STEP 3: Upload Waypoints 1 by 1
+    while (sequenceRetries < 200) {
+      const res = await mavlinkApi
+        .get(
+          `/v1/mavlink/vehicles/1/components/1/messages/MISSION_REQUEST?t=${Date.now()}`,
+        )
+        .catch(() => null);
 
-      try {
-        const reqRes = await mavlinkApi.get(
-          "/v1/mavlink/vehicles/1/components/1/messages/MISSION_REQUEST",
-        );
+      if (res?.data?.message) {
+        const requestedSeq = res.data.message.seq;
 
-        if (reqRes.data && reqRes.data.message) {
-          const msgSeqId = reqRes.data.header.sequence; // Unique packet ID
-          const requestedWpIndex = reqRes.data.message.seq; // Which waypoint drone wants
+        // If the drone asks for a new sequence OR 1 second has passed (meaning packet dropped)
+        if (
+          requestedSeq !== lastHandledSeq ||
+          Date.now() - lastHandledTime > 1000
+        ) {
+          sequenceRetries = 0;
 
-          // If the drone is asking for a waypoint we haven't sent yet
-          if (msgSeqId !== lastReqSeqId) {
-            lastReqSeqId = msgSeqId;
+          if (onProgress)
+            onProgress(
+              requestedSeq,
+              totalItems,
+              `Uploading Waypoint ${requestedSeq + 1} of ${totalItems}...`,
+            );
 
-            let itemData;
-            if (requestedWpIndex === 0) {
-              // Index 0 is ALWAYS Home Position
-              itemData = {
-                command: 16,
-                lat: homePosition[0],
-                lon: homePosition[1],
-                alt: 0,
-                param1: 0,
-                param2: 0,
-                param3: 0,
-                param4: 0,
-              };
-            } else {
-              // Get the item from our list (offset by 1 because of Home)
-              itemData = missionItems[requestedWpIndex - 1];
-            }
+          let item =
+            requestedSeq === 0
+              ? {
+                  lat: homePosition[0],
+                  lon: homePosition[1],
+                  alt: 0,
+                  command: 16,
+                }
+              : missionItems[requestedSeq - 1];
 
-            if (itemData) {
-              // Send the exact requested waypoint
-              await mavlinkApi.post("/mavlink", {
-                header: { system_id: 255, component_id: 0, sequence: 0 },
-                message: {
-                  type: "MISSION_ITEM_INT",
-                  target_system: 1,
-                  target_component: 1,
-                  seq: requestedWpIndex,
-                  frame: { type: "MAV_FRAME_GLOBAL_RELATIVE_ALT" },
-                  command: {
-                    type:
-                      COMMAND_MAP[itemData.command] || "MAV_CMD_NAV_WAYPOINT",
-                  },
-                  current: requestedWpIndex === 0 ? 1 : 0,
-                  autocontinue: 1,
-                  param1: itemData.param1 || 0,
-                  param2: itemData.param2 || 0,
-                  param3: itemData.param3 || 0,
-                  param4: itemData.param4 || 0,
-                  x: Math.round(itemData.lat * 1e7), // Lat * 10^7
-                  y: Math.round(itemData.lon * 1e7), // Lon * 10^7
-                  z: itemData.alt || 0, // Altitude
-                  mission_type: { type: "MAV_MISSION_TYPE_MISSION" },
+          if (item) {
+            await mavlinkApi.post("/mavlink", {
+              header: { system_id: 255, component_id: 0, sequence: 0 },
+              message: {
+                type: "MISSION_ITEM_INT",
+                target_system: 1,
+                target_component: 1,
+                seq: requestedSeq,
+                frame: { type: "MAV_FRAME_GLOBAL_RELATIVE_ALT" },
+                command: {
+                  type: COMMAND_MAP[item.command] || "MAV_CMD_NAV_WAYPOINT",
                 },
-              });
-            }
+                current: requestedSeq === 0 ? 1 : 0,
+                autocontinue: 1,
+                x: Math.round(item.lat * 1e7),
+                y: Math.round(item.lon * 1e7),
+                z: item.alt || 0,
+                param1: item.param1 || 0,
+                param2: item.param2 || 0,
+                param3: item.param3 || 0,
+                param4: item.param4 || 0,
+                mission_type: { type: "MAV_MISSION_TYPE_MISSION" },
+              },
+            });
 
-            // If the drone just asked for the very last item, we are done
-            if (requestedWpIndex === totalItems - 1) {
-              await new Promise((r) => setTimeout(r, 600)); // Wait for final ACK
-              isComplete = true;
+            lastHandledSeq = requestedSeq;
+            lastHandledTime = Date.now();
+
+            // Check if we just sent the last waypoint
+            if (requestedSeq === totalItems - 1) {
+              if (onProgress)
+                onProgress(
+                  totalItems,
+                  totalItems,
+                  "Mission Uploaded Successfully!",
+                );
+              return true;
             }
           }
+        } else {
+          sequenceRetries++;
         }
-      } catch (e) {
-        // Ignore temporary network errors while polling
+      } else {
+        sequenceRetries++;
       }
-      retries++;
+      await new Promise((r) => setTimeout(r, 50));
     }
-
-    if (isComplete) {
-      toast.success(
-        `Successfully uploaded ${missionItems.length} waypoints to Pixhawk!`,
-      );
-      return true;
-    } else {
-      toast.error("Upload timed out. Ensure drone is connected.");
-      return false;
-    }
-  } catch (err) {
-    console.error("Upload failed:", err);
-    toast.error("Failed to communicate with mavlink2rest.");
+    return false;
+  } catch (e) {
     return false;
   }
 };
