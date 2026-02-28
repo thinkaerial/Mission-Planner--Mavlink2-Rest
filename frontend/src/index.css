@@ -2,7 +2,7 @@
 
 :root {
   --background-primary: #121212;
-  --background-secondary: #1e1e1e;
+  --background-secondary: #1e293b; /* Adjusted to match your dark slate theme */
   --background-tertiary: #2a2a2a;
   --border-color: #333333;
   --text-primary: #e0e0e0;
@@ -19,10 +19,9 @@ body {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* overflow: hidden; */
 }
 
-/* index.css */
+/* --- Animations --- */
 @keyframes blinkGreen {
   0% { background-color: #16a34a; box-shadow: 0 0 0px #16a34a; }
   50% { background-color: #22c55e; box-shadow: 0 0 20px #22c55e; }
@@ -55,12 +54,119 @@ body {
   100% { transform: translate(-50%, -50%) scale(1); background-color: #16a34a; box-shadow: 0 0 0px #22c55e; }
 }
 
+.animate-blink-ready {
+  animation: blinkGreen 1.5s infinite;
+}
+
 .animate-blink {
   animation: blink-ready 1.2s infinite ease-in-out;
+}
+
+.checklist-item-appear {
+  animation: slideIn 0.4s ease-out forwards;
+}
+
+/* --- UI Logic --- */
+.ui-locked-overlay {
+  pointer-events: none;
+  filter: grayscale(0.6) blur(1px);
+  opacity: 0.8;
+  transition: all 0.5s ease;
 }
 
 /* Gray out the UI when locked */
 .cursor-not-allowed .leaflet-container {
   filter: brightness(0.4) grayscale(0.5);
   pointer-events: none;
+}
+
+/* Ensure drawing layer is clickable when not locked */
+.leaflet-draw-guide-dash {
+  pointer-events: none;
+}
+
+/* Hide toolbar tools but keep Save/Cancel logic */
+.leaflet-draw-toolbar {
+  display: none !important;
+}
+
+/* =========================================================
+   LEAFLET DRAW ACTIONS THEME (SAVE / CANCEL / DELETE)
+   Repositions native buttons to the top-right and 
+   themes them to match your application UI.
+========================================================= */
+
+ul.leaflet-draw-actions {
+  position: fixed !important;
+  top: 100px !important;
+  right: 70px !important;
+  left: auto !important;
+  bottom: auto !important;
+  background-color: #1e293b !important;
+  border: 1px solid #475569 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6) !important;
+  padding: 10px !important;
+  z-index: 99999 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  pointer-events: auto !important; /* Makes the container clickable */
+}
+
+ul.leaflet-draw-actions li {
+  display: block !important;
+  list-style: none !important;
+  pointer-events: auto !important;
+}
+
+
+ul.leaflet-draw-actions li a {
+  display: block !important;
+  background-color: #334155 !important;
+  color: #f8fafc !important;
+  border-radius: 6px !important;
+  padding: 12px 20px !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  text-align: center !important;
+  text-decoration: none !important;
+  pointer-events: auto !important; /* Makes the link itself clickable */
+}
+
+
+/* Save / Finish Hover */
+ul.leaflet-draw-actions li:first-child a:hover {
+  background-color: #22c55e !important;
+  color: white !important;
+}
+
+/* Cancel / Delete Hover */
+ul.leaflet-draw-actions li a[title*="Cancel"]:hover,
+ul.leaflet-draw-actions li a[title*="Delete"]:hover {
+  background-color: #ef4444 !important;
+  color: white !important;
+}
+
+/* =========================================================
+   TOOLTIP THEMING (Follows mouse cursor)
+========================================================= */
+.leaflet-draw-tooltip {
+  background-color: #1e293b !important;
+  border: 1px solid #475569 !important;
+  color: #f8fafc !important;
+  border-radius: 6px !important;
+  padding: 6px 10px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5) !important;
+}
+
+.leaflet-draw-tooltip-sub {
+  color: #94a3b8 !important;
+  margin-top: 4px !important;
+}
+
+.leaflet-draw-tooltip::before {
+  border-right-color: #475569 !important;
 }

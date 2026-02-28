@@ -51,6 +51,8 @@ export const takeoffDrone = (alt = 10) =>
   sendCommand("MAV_CMD_NAV_TAKEOFF", 0, 0, 0, 0, 0, 0, alt);
 export const landDrone = () => sendCommand("MAV_CMD_NAV_LAND");
 export const rtlDrone = () => sendCommand("MAV_CMD_NAV_RETURN_TO_LAUNCH");
+export const triggerCamera = () =>
+  sendCommand("MAV_CMD_IMAGE_START_CAPTURE", 0, 0, 1, 0, 0, 0, 0); // Takes 1 picture
 
 // CLEAR MISSION
 export const clearDroneMission = async () => {
@@ -70,16 +72,16 @@ export const clearDroneMission = async () => {
   }
 };
 
-// DOWNLOAD MISSION FROM DRONE
+// DOWNLOAD MISSION FROM DRONE (Fixed Packet Loss)
 export const downloadMissionFromDrone = async (onProgress) => {
   try {
-    // STEP 1: Request Mission Count
     if (onProgress)
       onProgress(0, 100, "Requesting mission count from drone...");
 
     let missionCount = -1;
     let requestListTime = 0;
 
+    // Request count with 1-second auto-retry if packet drops
     for (let i = 0; i < 40; i++) {
       if (Date.now() - requestListTime > 1000) {
         await mavlinkApi.post("/mavlink", {
@@ -97,7 +99,7 @@ export const downloadMissionFromDrone = async (onProgress) => {
       await new Promise((r) => setTimeout(r, 100));
       const res = await mavlinkApi
         .get(
-          `/v1/mavlink/vehicles/1/components/1/messages/MISSION_COUNT?t=${Date.now()}`,
+          `/v1/mavlink/vehicles/1/components/1/messages/MISSION_COUNT?_cb=${Date.now()}`,
         )
         .catch(() => null);
 
@@ -107,13 +109,10 @@ export const downloadMissionFromDrone = async (onProgress) => {
       }
     }
 
-    if (missionCount <= 0) {
-      return [];
-    }
-
+    if (missionCount <= 0) return [];
     const downloadedItems = [];
 
-    // STEP 2: Download Waypoints 1 by 1
+    // Download Waypoints 1 by 1 with 1-second auto-retry
     for (let i = 0; i < missionCount; i++) {
       if (onProgress)
         onProgress(
@@ -125,8 +124,8 @@ export const downloadMissionFromDrone = async (onProgress) => {
       let gotWaypoint = false;
       let requestTime = 0;
 
-      for (let retries = 0; retries < 40 && !gotWaypoint; retries++) {
-        // Send request (with retry if packet drops)
+      for (let retries = 0; retries < 100 && !gotWaypoint; retries++) {
+        // Max 10 seconds per waypoint
         if (Date.now() - requestTime > 1000) {
           await mavlinkApi.post("/mavlink", {
             header: { system_id: 255, component_id: 0, sequence: 0 },
@@ -144,7 +143,7 @@ export const downloadMissionFromDrone = async (onProgress) => {
         await new Promise((r) => setTimeout(r, 100));
         const res = await mavlinkApi
           .get(
-            `/v1/mavlink/vehicles/1/components/1/messages/MISSION_ITEM_INT?t=${Date.now()}`,
+            `/v1/mavlink/vehicles/1/components/1/messages/MISSION_ITEM_INT?_cb=${Date.now()}`,
           )
           .catch(() => null);
 
@@ -178,7 +177,7 @@ export const downloadMissionFromDrone = async (onProgress) => {
       if (!gotWaypoint) throw new Error("Timeout getting waypoint " + i);
     }
 
-    // STEP 3: Acknowledge Download Complete
+    // Acknowledge Download Complete
     await mavlinkApi.post("/mavlink", {
       header: { system_id: 255, component_id: 0, sequence: 0 },
       message: {
@@ -199,14 +198,14 @@ export const downloadMissionFromDrone = async (onProgress) => {
   }
 };
 
-// UPLOAD MISSION TO DRONE
+// UPLOAD MISSION TO DRONE (Fixed Packet Loss)
 export const uploadMissionToDrone = async (
   missionItems,
   homePosition,
   onProgress,
 ) => {
   try {
-    const totalItems = missionItems.length + 1; // +1 for the Home waypoint at index 0
+    const totalItems = missionItems.length + 1;
     const COMMAND_MAP = {
       16: "MAV_CMD_NAV_WAYPOINT",
       20: "MAV_CMD_NAV_RETURN_TO_LAUNCH",
@@ -215,15 +214,13 @@ export const uploadMissionToDrone = async (
       206: "MAV_CMD_DO_SET_CAM_TRIGG_DIST",
     };
 
-    // STEP 1: Clear Old Mission
     if (onProgress)
       onProgress(0, totalItems, "Clearing old mission from drone...");
     await clearDroneMission();
-    await new Promise((r) => setTimeout(r, 1000)); // Crucial delay to let Pixhawk memory clear
+    await new Promise((r) => setTimeout(r, 1000));
 
-    // STEP 2: Send Count
     if (onProgress)
-      onProgress(0, totalItems, "Preparing to upload new mission...");
+      onProgress(0, totalItems, "Sending total waypoint count...");
     await mavlinkApi.post("/mavlink", {
       header: { system_id: 255, component_id: 0, sequence: 0 },
       message: {
@@ -239,24 +236,22 @@ export const uploadMissionToDrone = async (
     let lastHandledTime = Date.now();
     let sequenceRetries = 0;
 
-    // STEP 3: Upload Waypoints 1 by 1
     while (sequenceRetries < 200) {
       const res = await mavlinkApi
         .get(
-          `/v1/mavlink/vehicles/1/components/1/messages/MISSION_REQUEST?t=${Date.now()}`,
+          `/v1/mavlink/vehicles/1/components/1/messages/MISSION_REQUEST?_cb=${Date.now()}`,
         )
         .catch(() => null);
 
       if (res?.data?.message) {
         const requestedSeq = res.data.message.seq;
 
-        // If the drone asks for a new sequence OR 1 second has passed (meaning packet dropped)
+        // If drone asks for a new sequence OR 1 sec has passed (packet dropped)
         if (
           requestedSeq !== lastHandledSeq ||
           Date.now() - lastHandledTime > 1000
         ) {
           sequenceRetries = 0;
-
           if (onProgress)
             onProgress(
               requestedSeq,
@@ -302,7 +297,6 @@ export const uploadMissionToDrone = async (
             lastHandledSeq = requestedSeq;
             lastHandledTime = Date.now();
 
-            // Check if we just sent the last waypoint
             if (requestedSeq === totalItems - 1) {
               if (onProgress)
                 onProgress(

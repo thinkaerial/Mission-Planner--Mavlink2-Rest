@@ -19,11 +19,15 @@ const MissionTools = ({
   onZoomOut,
   onDraw,
   onEdit,
+  isLocked, // 1. STEP: Add isLocked to the props
 }) => {
   const selectStyle =
     "bg-[#1e293b] text-white p-2 rounded-lg shadow-lg hover:bg-gray-700 transition-colors duration-200 cursor-pointer text-sm";
-  const buttonStyle =
-    "bg-[#1e293b] text-white p-2 rounded-lg shadow-lg hover:bg-gray-700 transition-colors duration-200 cursor-pointer";
+
+  // 2. STEP: Update buttonStyle to show visual feedback when locked
+  const buttonStyle = (disabled) =>
+    `bg-[#1e293b] text-white p-2 rounded-lg shadow-lg transition-colors duration-200 
+    ${disabled ? "opacity-50 cursor-not-allowed text-gray-500" : "hover:bg-gray-700 cursor-pointer"}`;
 
   return (
     <div className="absolute top-5 right-5 z-[1000] flex flex-col gap-2 items-end">
@@ -31,13 +35,14 @@ const MissionTools = ({
         value={activeLayer.name}
         onChange={(e) => {
           const selectedLayer = allLayers.find(
-            (layer) => layer.name === e.target.value
+            (layer) => layer.name === e.target.value,
           );
           if (selectedLayer) {
             onLayerChange(selectedLayer);
           }
         }}
         className={selectStyle}
+        disabled={isLocked} // Optional: lock map switcher
       >
         {allLayers.map((layer) => (
           <option key={layer.name} value={layer.name}>
@@ -48,10 +53,20 @@ const MissionTools = ({
 
       {onZoomIn && (
         <div className="flex flex-col gap-2">
-          <button onClick={onZoomIn} className={buttonStyle} title="Zoom In">
+          <button
+            onClick={onZoomIn}
+            className={buttonStyle(isLocked)}
+            title="Zoom In"
+            disabled={isLocked}
+          >
             <FaPlus className="text-xl" />
           </button>
-          <button onClick={onZoomOut} className={buttonStyle} title="Zoom Out">
+          <button
+            onClick={onZoomOut}
+            className={buttonStyle(isLocked)}
+            title="Zoom Out"
+            disabled={isLocked}
+          >
             <FaMinus className="text-xl" />
           </button>
         </div>
@@ -59,14 +74,23 @@ const MissionTools = ({
 
       {onDraw && (
         <div className="flex flex-col gap-2">
+          {/* 3. STEP: Update onDraw to check !isLocked */}
           <button
-            onClick={onDraw}
-            className={buttonStyle}
+            onClick={() => !isLocked && onDraw()}
+            className={buttonStyle(isLocked)}
             title="Draw Polygon Area"
+            disabled={isLocked}
           >
             <FaDrawPolygon className="text-xl" />
           </button>
-          <button onClick={onEdit} className={buttonStyle} title="Edit Area">
+
+          {/* 4. STEP: Update onEdit to check !isLocked */}
+          <button
+            onClick={() => !isLocked && onEdit()}
+            className={buttonStyle(isLocked)}
+            title="Edit Area"
+            disabled={isLocked}
+          >
             <FaEdit className="text-xl" />
           </button>
         </div>
@@ -75,15 +99,16 @@ const MissionTools = ({
       <div className="flex flex-col gap-2">
         <button
           onClick={onCenter}
-          className={buttonStyle}
+          className={buttonStyle(false)} // Usually allowed even if mission is locked
           title="Center on Home"
         >
           <FaCrosshairs className="text-xl" />
         </button>
         <button
-          onClick={onClear}
-          className={buttonStyle}
+          onClick={() => !isLocked && onClear()}
+          className={buttonStyle(isLocked)}
           title="Clear Mission Area"
+          disabled={isLocked}
         >
           <FaTrash className="text-xl" />
         </button>

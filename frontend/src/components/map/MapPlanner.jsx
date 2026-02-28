@@ -20,8 +20,20 @@ import * as turf from "@turf/turf";
 import { FaLocationArrow } from "react-icons/fa";
 
 const hiddenDrawToolbarStyle = `
-  .leaflet-draw-section {
-    display: none;
+  /* Hide the toolbar icons but keep the container for logic */
+  .leaflet-draw-toolbar {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+  /* Force the Save/Cancel buttons to be visible and clickable */
+  .leaflet-draw-actions {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
   }
 `;
 
@@ -110,6 +122,7 @@ const MapPlanner = ({
   missionCalcs,
   surveyOptions,
   missionOptions,
+  isLocked,
 }) => {
   const featureGroupRef = React.useRef();
 
@@ -299,8 +312,10 @@ const MapPlanner = ({
           zoom={18}
           minZoom={2}
           maxZoom={safeActiveLayer.options.maxZoom || 21}
-          scrollWheelZoom={true}
           zoomControl={false}
+          dragging={!isLocked}
+          scrollWheelZoom={!isLocked}
+          doubleClickZoom={!isLocked}
           className="absolute inset-0 z-10"
           ref={mapRef}
         >
@@ -328,17 +343,22 @@ const MapPlanner = ({
                   circlemarker: false,
                   marker: false,
                   polyline: false,
-                  polygon: {
-                    allowIntersection: false,
-                    shapeOptions: {
-                      color: settings.showBoundary ? "#FF0055" : "transparent",
-                      fillOpacity: settings.showBoundary ? 0.1 : 0,
-                      opacity: settings.showBoundary ? 1 : 0,
-                      weight: 2,
-                    },
-                  },
+                  polygon: isLocked
+                    ? false
+                    : {
+                        allowIntersection: false,
+                        shapeOptions: {
+                          color: "#FF0055",
+                          weight: 2,
+                        },
+                      },
                 }}
-                edit={{ featureGroup: featureGroupRef.current, remove: false }}
+                edit={{
+                  featureGroup: featureGroupRef.current,
+                  remove: false,
+                  // Disable editing points if locked
+                  allowEdit: !isLocked,
+                }}
               />
             </FeatureGroup>
           </div>
